@@ -15,3 +15,5 @@ Build and debug a hybrid AI assistant that answers travel queries using:
 6.Run `python hybrid_chat.py`
 7.Ask: `create a romantic 4 day itinerary for Vietnam`
 8.Modify “hybrid_chat.py” to improve the outcome.
+
+context bloat
