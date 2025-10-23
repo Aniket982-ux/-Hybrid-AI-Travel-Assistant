@@ -6,6 +6,7 @@ from neo4j import GraphDatabase
 import config
 from embeddings import embed_text
 
+# Thread pool for running blocking I/O operations (Pinecone, Neo4j) asynchronously
 _executor = ThreadPoolExecutor(max_workers=4)
 
 TOP_K = 5
@@ -14,6 +15,7 @@ VECTOR_DIM = 768
 
 pc = Pinecone(api_key=config.PINECONE_API_KEY)
 
+# Create Pinecone index if it doesn't exist
 existing_indexes = pc.list_indexes().names()
 if INDEX_NAME not in existing_indexes:
     print(f"Creating index: {INDEX_NAME}")
@@ -42,6 +44,7 @@ def fetch_graph_context(node_ids: List[str]):
     facts = []
     with driver.session() as session:
         for nid in node_ids:
+            # Cypher query: fetch all relationships and connected entities (limit 10 per node)
             q = (
                 "MATCH (n:Entity {id:$nid})-[r]-(m:Entity) "
                 "RETURN type(r) AS rel, m.id AS id, m.name AS name, "
@@ -63,6 +66,7 @@ async def async_fetch_graph(node_ids: List[str]):
     return await loop.run_in_executor(_executor, lambda: fetch_graph_context(node_ids))
 
 async def retrieve_parallel(query_text: str, top_k=TOP_K):
+    # Run both queries concurrently (time = max(pinecone_time, neo4j_time))
     matches = await pinecone_query(query_text, top_k=top_k)
     match_ids = [m["id"] for m in matches]
     graph_facts = await async_fetch_graph(match_ids)

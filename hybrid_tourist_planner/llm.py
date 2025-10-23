@@ -15,7 +15,8 @@ def build_prompt(user_query, pinecone_matches, graph_facts):
         "If the user's query references previous conversation (like 'it', 'that', 'make it different'), use the get_conversation_history tool to retrieve context."
         "Cite node IDs when referencing any specific places, attractions, or entities along with their names."
     )
-
+    
+    # Format Pinecone vector search results with IDs, names, and relevance scores
     vec_context = []
     for m in pinecone_matches:
         meta = m["metadata"]
@@ -23,7 +24,7 @@ def build_prompt(user_query, pinecone_matches, graph_facts):
         if meta.get("city"):
             snippet += f", city: {meta.get('city')}"
         vec_context.append(snippet)
-
+    # Format Neo4j graph relationships (source → relation → target)
     graph_context = [
         f"- ({f['source']}) -[{f['rel']}]-> ({f['target_id']}) {f['target_name']}: {f['target_desc']}"
         for f in graph_facts
@@ -46,6 +47,7 @@ def call_chat(prompt_messages):
     system_msg = prompt_messages[0]['content']
     user_msg = prompt_messages[1]['content']
     
+    # Define conversation history tool for LLM to call when needed
     memory_tool = types.Tool(
         function_declarations=[
             types.FunctionDeclaration(
@@ -58,6 +60,7 @@ def call_chat(prompt_messages):
     
     full_prompt = f"{system_msg}\n\n{user_msg}"
     
+    # First call: LLM decides whether to use conversation history tool
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=full_prompt,
@@ -66,11 +69,12 @@ def call_chat(prompt_messages):
             system_instruction=system_msg
         )
     )
-    
+    # Check if LLM called the tool to retrieve conversation context
     if response.candidates and response.candidates[0].content.parts:
         for part in response.candidates[0].content.parts:
             if hasattr(part, 'function_call') and part.function_call:
                 if part.function_call.name == "get_conversation_history":
+                    # Tool called: fetch history and regenerate response with context
                     history = get_conversation_history()
                     full_prompt_with_history = f"{system_msg}\n\n{user_msg}\n\nConversation history:\n{history}"
                     

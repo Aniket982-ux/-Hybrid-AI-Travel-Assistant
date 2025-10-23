@@ -6,12 +6,14 @@ import config
 HF_API_URL = f"https://api-inference.huggingface.co/models/{config.HF_MODEL_NAME}"
 HF_HEADERS = {"Authorization": f"Bearer {config.HF_API_KEY}"}
 
+#LRU cache for embeddings for 128 most recent texts
 _embedding_cache = {}
 _cache_order = []
 MAX_CACHE_SIZE = 128
 
 def embed_text(text: str, retries=3) -> List[float]:
     """Get embedding from Hugging Face with LRU caching."""
+    #for o(1) lookup
     if text in _embedding_cache:
         return _embedding_cache[text]
     
@@ -33,4 +35,4 @@ def embed_text(text: str, retries=3) -> List[float]:
             if attempt == retries - 1:
                 print(f"Error: Embedding API failed after {retries} attempts.")
                 raise
-            time.sleep(2 ** attempt)
+            time.sleep(2 ** attempt) # Exponential backoff
