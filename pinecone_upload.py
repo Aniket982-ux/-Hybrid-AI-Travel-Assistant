@@ -3,7 +3,7 @@ import time
 from tqdm import tqdm
 from pinecone import Pinecone, ServerlessSpec
 import requests
-import config
+from hybrid_tourist_planner import config
 
 # -----------------------------
 # Config
